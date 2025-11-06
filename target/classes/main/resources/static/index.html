@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LABE 实验设备管理系统</title>
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+      <span class="logo">LABE</span>
+      <span class="divider"></span>
+      <span class="subtitle">实验设备管理系统</span>
+    </div>
+    <nav class="nav">
+      <a href="/">首页</a>
+      <a href="/login.html">登录</a>
+      <a href="/register.html">注册</a>
+      <a href="/lab-center.html">实验室管理中心</a>
+      <a href="/apply.html">实验设备申请</a>
+      <a href="/assets-mgmt.html">固定资产管理</a>
+      <a href="/borrow.html">设备借还管理</a>
+      <a href="/stats.html">设备统计</a>
+      <a href="/consumables.html">低值易耗材管理</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <h1>欢迎使用 LABE 实验设备管理系统</h1>
+    <p class="lead">覆盖申请、入账、借还、维修报废、耗材领用与统计报表的全流程。</p>
+    <div class="actions">
+      <a class="btn primary" href="/login.html" id="loginBtn" style="display:none;">立即登录</a>
+      <a class="btn" href="#features">了解功能</a>
+    </div>
+  </main>
+
+  <section id="features" class="features-section">
+    <h2 class="features-title">核心功能</h2>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>高效管理</h3>
+        <ul class="feature-list">
+          <li>设备自动登记</li>
+          <li>借还流程自动化</li>
+          <li>状态实时追踪</li>
+          <li>数据自动统计</li>
+          <li>报表自动生成</li>
+          <li>审批流程优化</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>智能分析</h3>
+        <ul class="feature-list">
+          <li>设备使用率分析</li>
+          <li>耗材消耗预测</li>
+          <li>异常数据检测</li>
+          <li>智能库存预警</li>
+          <li>成本统计分析</li>
+          <li>趋势可视化</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✓</div>
+        <h3>规范合规</h3>
+        <ul class="feature-list">
+          <li>全流程审批管理</li>
+          <li>设备生命周期跟踪</li>
+          <li>维修记录完整归档</li>
+          <li>报废流程规范化</li>
+          <li>数据可追溯性</li>
+          <li>符合实验室管理规范</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <span>© <span id="year"></span> LABE · 实验设备管理系统</span>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    // 检查是否已登录（简单检查，实际应该从后端获取）
+    fetch('/devices', { method: 'GET', credentials: 'include' })
+      .then(res => {
+        if (res.ok) {
+          // 已登录，隐藏登录按钮
+          document.getElementById('loginBtn').style.display = 'none';
+        } else {
+          // 未登录，显示登录按钮
+          document.getElementById('loginBtn').style.display = 'inline-block';
+        }
+      })
+      .catch(() => {
+        // 出错时显示登录按钮
+        document.getElementById('loginBtn').style.display = 'inline-block';
+      });
+  </script>
+</body>
+</html>
+
+

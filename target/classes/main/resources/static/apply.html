@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>实验设备申请 - LABE</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+    <span class="logo">LABE</span>
+    <span class="divider"></span>
+    <span class="subtitle">实验设备申请</span>
+  </div>
+  <nav class="nav">
+    <a href="/">首页</a>
+    <a href="/login.html">登录</a>
+    <a href="/register.html">注册</a>
+    <a href="/lab-center.html">实验室管理中心</a>
+    <a href="/apply.html" class="active">实验设备申请</a>
+    <a href="/assets-mgmt.html">固定资产管理</a>
+    <a href="/borrow.html">设备借还管理</a>
+    <a href="/stats.html">设备统计</a>
+    <a href="/consumables.html">低值易耗材管理</a>
+  </nav>
+</header>
+<main class="hero" style="max-width:900px;text-align:left;">
+  <h1>设备采购申请表</h1>
+  <div class="feature" style="padding:20px;">
+    <form id="applyForm">
+      <div class="form-row">
+        <label>设备类别 *</label>
+        <select id="categoryId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>所属实验室 *</label>
+        <select id="laboratoryId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row"><label>类名</label><input id="className" placeholder="通用类" /></div>
+      <div class="form-row"><label>设备名</label><input id="deviceName" required placeholder="示波器" /></div>
+      <div class="form-row"><label>编号（deviceCode）</label><input id="deviceCode" required placeholder="DEV-001" /></div>
+      <div class="form-row"><label>规格</label><input id="spec" placeholder="100MHz" /></div>
+      <div class="form-row"><label>单价</label><input id="unitPrice" type="number" placeholder="12000" /></div>
+      <div class="form-row"><label>数量</label><input id="quantity" type="number" value="1" min="1" /></div>
+      <div class="actions"><button class="btn primary" type="submit">登记设备</button></div>
+    </form>
+    <p id="applyMsg" class="lead" style="margin-top:12px;"></p>
+  </div>
+</main>
+</body>
+<script>
+  // 加载参考数据
+  async function loadReferenceData() {
+    try {
+      const res = await fetch('/api/reference/all');
+      if (!res.ok) return;
+      const data = await res.json();
+      
+      // 填充设备类别
+      const catSelect = document.getElementById('categoryId');
+      data.categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = `${cat.name} (ID: ${cat.id}${cat.code ? ', 编码: ' + cat.code : ''})`;
+        catSelect.appendChild(opt);
+      });
+      
+      // 填充实验室
+      const labSelect = document.getElementById('laboratoryId');
+      data.laboratories.forEach(lab => {
+        const opt = document.createElement('option');
+        opt.value = lab.id;
+        opt.textContent = `${lab.name} (ID: ${lab.id}${lab.location ? ', ' + lab.location : ''})`;
+        labSelect.appendChild(opt);
+      });
+    } catch (err) {
+      console.error('加载参考数据失败:', err);
+    }
+  }
+  
+  loadReferenceData();
+  
+  const form = document.getElementById('applyForm');
+  const msg = document.getElementById('applyMsg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '提交中...';
+    try {
+      const body = {
+        categoryId: Number(document.getElementById('categoryId').value),
+        laboratoryId: Number(document.getElementById('laboratoryId').value),
+        className: document.getElementById('className').value || null,
+        deviceName: document.getElementById('deviceName').value,
+        deviceCode: document.getElementById('deviceCode').value,
+        spec: document.getElementById('spec').value || null,
+        unitPrice: document.getElementById('unitPrice').value ? Number(document.getElementById('unitPrice').value) : null,
+        quantity: document.getElementById('quantity').value ? Number(document.getElementById('quantity').value) : 1
+      };
+      const res = await fetch('/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMsg = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.message || errorJson.error || errorText;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const data = await res.json();
+      msg.style.color = '';
+      msg.textContent = `已登记成功（ID=${data.id}，编码=${data.deviceCode}）`;
+      form.reset();
+    } catch (err) {
+      msg.style.color = '#ff6b6b';
+      msg.textContent = '提交失败：' + (err?.message || err);
+    }
+  });
+</script>
+</html>
+
+

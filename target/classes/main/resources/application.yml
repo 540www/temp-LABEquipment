@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: equipment
+  datasource:
+    url: jdbc:mysql://localhost:3306/lab_equipment?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: "987426"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 10000
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+    org.springframework: info
+
+# 数据初始化配置
+app:
+  data:
+    # 设置为 true 时，每次启动都会清空并重新初始化测试数据
+    # 设置为 false 时，如果数据已存在则跳过初始化
+    force-init: true
+

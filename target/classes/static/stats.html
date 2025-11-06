@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>设备统计 - LABE</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+    <span class="logo">LABE</span>
+    <span class="divider"></span>
+    <span class="subtitle">设备统计</span>
+  </div>
+  <nav class="nav">
+    <a href="/">首页</a>
+    <a href="/login.html">登录</a>
+    <a href="/register.html">注册</a>
+    <a href="/lab-center.html">实验室管理中心</a>
+    <a href="/apply.html">实验设备申请</a>
+    <a href="/assets-mgmt.html">固定资产管理</a>
+    <a href="/borrow.html">设备借还管理</a>
+    <a href="/stats.html" class="active">设备统计</a>
+    <a href="/consumables.html">低值易耗材管理</a>
+  </nav>
+</header>
+<main class="hero" style="max-width:980px;text-align:left;">
+  <h1>年度使用统计与借用频次</h1>
+  <div class="feature" style="padding:20px;">
+    <div class="actions"><a id="reload" class="btn primary" href="#">刷新统计</a></div>
+    <p id="summary" class="lead" style="margin-top:12px;">加载中...</p>
+    <table id="table" style="width:100%; margin-top:12px; border-collapse: collapse;">
+      <thead><tr>
+        <th style="text-align:left; padding:8px;">记录ID</th>
+        <th style="text-align:left; padding:8px;">设备名称</th>
+        <th style="text-align:left; padding:8px;">设备编码</th>
+        <th style="text-align:left; padding:8px;">借用人</th>
+        <th style="text-align:left; padding:8px;">借出时间</th>
+        <th style="text-align:left; padding:8px;">应还时间</th>
+        <th style="text-align:left; padding:8px;">归还时间</th>
+        <th style="text-align:left; padding:8px;">状态</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</main>
+</body>
+<script>
+  const elTBody = document.querySelector('#table tbody');
+  const elSummary = document.getElementById('summary');
+  let devicesMap = {};
+  let usersMap = {};
+  
+  async function loadDevicesAndUsers() {
+    try {
+      const [devicesRes, usersRes] = await Promise.all([
+        fetch('/api/reference/devices'),
+        fetch('/api/reference/users')
+      ]);
+      if (devicesRes.ok) {
+        const devices = await devicesRes.json();
+        devices.forEach(d => { devicesMap[d.id] = d; });
+      }
+      if (usersRes.ok) {
+        const users = await usersRes.json();
+        users.forEach(u => { usersMap[u.id] = u; });
+      }
+    } catch (err) {
+      console.error('加载设备/用户数据失败:', err);
+    }
+  }
+  
+  async function load() {
+    elSummary.textContent = '加载中...';
+    elTBody.innerHTML = '';
+    await loadDevicesAndUsers();
+    
+    const res = await fetch('/borrows');
+    if (!res.ok) { elSummary.textContent = '加载失败'; return; }
+    const list = await res.json();
+    const total = list.length;
+    const overdue = list.filter(x => x.status === 'OVERDUE').length;
+    const returned = list.filter(x => x.status === 'RETURNED').length;
+    const borrowed = list.filter(x => x.status === 'BORROWED').length;
+    elSummary.textContent = `借用记录：${total}，在借：${borrowed}，已归还：${returned}，逾期：${overdue}`;
+    
+    for (const r of list) {
+      const tr = document.createElement('tr');
+      const fmt = (v) => v ? new Date(v).toLocaleString('zh-CN') : '';
+      const device = devicesMap[r.deviceId] || {};
+      const user = usersMap[r.borrowerUserId] || {};
+      tr.innerHTML = `
+        <td style="padding:8px;">${r.id}</td>
+        <td style="padding:8px;">${device.deviceName || '未知'}</td>
+        <td style="padding:8px;">${device.deviceCode || r.deviceId}</td>
+        <td style="padding:8px;">${user.fullName || user.username || '未知'}</td>
+        <td style="padding:8px;">${fmt(r.borrowedAt)}</td>
+        <td style="padding:8px;">${fmt(r.dueAt)}</td>
+        <td style="padding:8px;">${fmt(r.returnedAt)}</td>
+        <td style="padding:8px;">${r.status}</td>
+      `;
+      elTBody.appendChild(tr);
+    }
+  }
+  document.getElementById('reload').addEventListener('click', (e)=>{ e.preventDefault(); load(); });
+  load();
+</script>
+</html>
+
+

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>注册 - LABE 实验设备管理系统</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <style>
+    .register-card {
+      max-width: 480px;
+      margin: 60px auto;
+      background: rgba(18, 26, 43, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 32px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .register-card h1 {
+      margin: 0 0 24px;
+      font-size: 24px;
+      text-align: center;
+      color: var(--text);
+    }
+    .form-row {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(14, 21, 38, 0.8);
+      color: var(--text);
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(14, 21, 38, 0.95);
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+    }
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 10px;
+    }
+    .actions .btn {
+      flex: 1;
+      text-align: center;
+    }
+    .help-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    #registerMsg {
+      margin-top: 16px;
+      text-align: center;
+      min-height: 20px;
+    }
+  </style>
+  <link rel="icon" href="/favicon.ico" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+      <span class="logo">LABE</span>
+      <span class="divider"></span>
+      <span class="subtitle">用户注册</span>
+    </div>
+    <nav class="nav">
+      <a href="/">首页</a>
+      <a href="/login.html">登录</a>
+      <a href="/register.html" class="active">注册</a>
+    </nav>
+  </header>
+
+  <div class="register-card">
+    <h1>注册新账号</h1>
+    <form id="registerForm">
+      <div class="form-row">
+        <label for="username">用户名 *</label>
+        <input id="username" name="username" type="text" required minlength="3" maxlength="20" autocomplete="username" />
+        <div class="help-text">3-20个字符，只能包含字母、数字和下划线</div>
+      </div>
+      <div class="form-row">
+        <label for="password">密码 *</label>
+        <input id="password" name="password" type="password" required minlength="6" maxlength="50" autocomplete="new-password" />
+        <div class="help-text">至少6个字符</div>
+      </div>
+      <div class="form-row">
+        <label for="fullName">姓名</label>
+        <input id="fullName" name="fullName" type="text" autocomplete="name" />
+      </div>
+      <div class="form-row">
+        <label for="email">邮箱</label>
+        <input id="email" name="email" type="email" autocomplete="email" />
+      </div>
+      <div class="form-row">
+        <label for="departmentId">所属部门ID（可选）</label>
+        <input id="departmentId" name="departmentId" type="number" placeholder="留空则不指定部门" />
+        <div class="help-text">可留空，或填写已存在的部门ID（如：1=计算机学院，2=物理学院）</div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">注册</button>
+        <a class="btn" href="/login.html">返回登录</a>
+      </div>
+    </form>
+    <p id="registerMsg" class="lead"></p>
+  </div>
+
+  <script>
+    const form = document.getElementById('registerForm');
+    const msg = document.getElementById('registerMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = '注册中...';
+      msg.style.color = '';
+
+      try {
+        const body = {
+          username: document.getElementById('username').value.trim(),
+          password: document.getElementById('password').value,
+          fullName: document.getElementById('fullName').value.trim() || null,
+          email: document.getElementById('email').value.trim() || null,
+          departmentId: document.getElementById('departmentId').value ? 
+            Number(document.getElementById('departmentId').value) : null
+        };
+
+        const res = await fetch('/api/users/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorMsg = errorText;
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMsg = errorJson.message || errorJson.error || errorText;
+          } catch {}
+          throw new Error(errorMsg);
+        }
+
+        const data = await res.json();
+        msg.style.color = '';
+        msg.textContent = `注册成功！用户ID: ${data.userId}，请前往登录页面登录。`;
+        form.reset();
+        
+        // 3秒后跳转到登录页
+        setTimeout(() => {
+          window.location.href = '/login.html';
+        }, 3000);
+      } catch (err) {
+        msg.style.color = '#ff6b6b';
+        msg.textContent = '注册失败：' + (err?.message || err);
+      }
+    });
+  </script>
+</body>
+</html>
+

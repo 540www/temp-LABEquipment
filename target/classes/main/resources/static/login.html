@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 - LABE 实验设备管理系统</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <style>
+    .login-card { max-width: 420px; margin: 80px auto; background: var(--card); padding: 24px; border-radius: 12px; border:1px solid rgba(255,255,255,.06); }
+    .login-card h1 { margin: 0 0 16px; font-size: 22px; text-align: center; }
+    .form-row { margin-bottom: 12px; }
+    label { display:block; margin-bottom:6px; color: var(--muted); }
+    input { width: 100%; padding: 10px 12px; border-radius: 8px; border:1px solid rgba(255,255,255,.16); background:#0e1526; color: var(--text); }
+    .actions { margin-top: 16px; display:flex; gap:10px; }
+    .actions .btn { flex:1; text-align:center; }
+  </style>
+  <link rel="icon" href="/favicon.ico" />
+</head>
+<body>
+  <div class="login-card">
+    <h1>登录 LABE</h1>
+    <form method="post" action="/login">
+      <div id="errorMsg" style="color:#ff6b6b;text-align:center;margin-bottom:12px;display:none;">登录失败，请检查账号密码</div>
+      <div class="form-row">
+        <label for="username">账号</label>
+        <input id="username" name="username" type="text" required autocomplete="username" />
+      </div>
+      <div class="form-row">
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">登录</button>
+        <a class="btn" href="/">返回首页</a>
+      </div>
+    </form>
+    <div style="text-align:center; margin-top:16px;">
+      <p class="lead" style="margin-bottom:8px;">默认管理员：admin / admin123</p>
+      <a href="/register.html" style="color: var(--primary); text-decoration: none; font-size: 14px;">还没有账号？立即注册</a>
+    </div>
+    <script>
+      if (new URLSearchParams(window.location.search).get('error') === 'true') {
+        document.getElementById('errorMsg').style.display = 'block';
+      }
+    </script>
+  </div>
+</body>
+</html>
+
+

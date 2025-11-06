@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>低值易耗材管理 - LABE</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+    <span class="logo">LABE</span>
+    <span class="divider"></span>
+    <span class="subtitle">低值易耗材管理</span>
+  </div>
+  <nav class="nav">
+    <a href="/">首页</a>
+    <a href="/login.html">登录</a>
+    <a href="/register.html">注册</a>
+    <a href="/lab-center.html">实验室管理中心</a>
+    <a href="/apply.html">实验设备申请</a>
+    <a href="/assets-mgmt.html">固定资产管理</a>
+    <a href="/borrow.html">设备借还管理</a>
+    <a href="/stats.html">设备统计</a>
+    <a href="/consumables.html" class="active">低值易耗材管理</a>
+  </nav>
+</header>
+<main class="hero" style="max-width:980px;text-align:left;">
+  <h1>领用与查询</h1>
+  <div class="feature" style="padding:20px;">
+    <div class="actions"><a id="reload" class="btn" href="#">刷新物品与库存</a></div>
+    <div id="list"></div>
+    <h3 style="margin-top:16px;">领用登记</h3>
+    <form id="issueForm">
+      <div class="form-row"><label>物品</label><select id="itemId" required><option value="">请选择物品...</option></select></div>
+      <div class="form-row"><label>实验室（可空）</label><select id="labId"><option value="">不指定实验室</option></select></div>
+      <div class="form-row"><label>数量</label><input id="qty" type="number" min="1" value="1" required /></div>
+      <div class="actions"><button class="btn primary" type="submit">领用</button></div>
+    </form>
+    <p id="msg" class="lead" style="margin-top:12px;"></p>
+  </div>
+</main>
+</body>
+<script>
+  const elList = document.getElementById('list');
+  const elMsg = document.getElementById('msg');
+  const elItemId = document.getElementById('itemId');
+  const elLabId = document.getElementById('labId');
+  
+  async function loadReferenceData() {
+    try {
+      const res = await fetch('/api/reference/all');
+      if (res.ok) {
+        const data = await res.json();
+        // 填充实验室下拉框
+        elLabId.innerHTML = '<option value="">不指定实验室</option>';
+        (data.laboratories || []).forEach(lab => {
+          const option = document.createElement('option');
+          option.value = lab.id;
+          option.textContent = `${lab.name} (${lab.location || ''})`;
+          elLabId.appendChild(option);
+        });
+      }
+    } catch (err) {
+      console.error('加载参考数据失败:', err);
+    }
+  }
+  
+  async function load() {
+    elList.innerHTML = '加载中...';
+    await loadReferenceData();
+    const res = await fetch('/consumables');
+    if (!res.ok) { elList.textContent = '加载失败'; return; }
+    const items = await res.json();
+    const parts = [];
+    // 填充物品下拉框
+    elItemId.innerHTML = '<option value="">请选择物品...</option>';
+    for (const it of items) {
+      const invRes = await fetch(`/consumables/inventory?itemId=${it.id}`);
+      const inv = invRes.ok ? await invRes.json() : { quantity: 0 };
+      const option = document.createElement('option');
+      option.value = it.id;
+      option.textContent = `${it.name || ''} (${it.category || ''}, 库存: ${inv.quantity || 0}${it.unit || ''})`;
+      elItemId.appendChild(option);
+      parts.push(`<div style=\"padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)\">#${it.id} ${it.name||''}（${it.category||''}，库存：${inv.quantity||0}${it.unit||''}）</div>`);
+    }
+    elList.innerHTML = parts.join('');
+  }
+  document.getElementById('reload').addEventListener('click', (e)=>{ e.preventDefault(); load(); });
+  document.getElementById('issueForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); elMsg.textContent = '提交中...'; elMsg.style.color = '';
+    try {
+      const itemId = Number(document.getElementById('itemId').value);
+      if (!itemId) {
+        throw new Error('请选择物品');
+      }
+      const labId = document.getElementById('labId').value ? Number(document.getElementById('labId').value) : '';
+      const qty = Number(document.getElementById('qty').value);
+      const url = `/consumables/issue?itemId=${itemId}&qty=${qty}${labId!==''?`&labId=${labId}`:''}`;
+      const res = await fetch(url, { method: 'POST' });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMsg = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.message || errorJson.error || errorText;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      elMsg.style.color = '';
+      elMsg.textContent = '领用成功';
+      document.getElementById('issueForm').reset();
+      load();
+    } catch (err) {
+      elMsg.style.color = '#ff6b6b';
+      elMsg.textContent = '失败：' + (err?.message || err);
+    }
+  });
+  load();
+</script>
+</html>
+
+

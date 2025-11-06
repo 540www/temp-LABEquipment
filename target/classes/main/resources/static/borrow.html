@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>设备借还管理 - LABE</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+    <span class="logo">LABE</span>
+    <span class="divider"></span>
+    <span class="subtitle">设备借还管理</span>
+  </div>
+  <nav class="nav">
+    <a href="/">首页</a>
+    <a href="/login.html">登录</a>
+    <a href="/register.html">注册</a>
+    <a href="/lab-center.html">实验室管理中心</a>
+    <a href="/apply.html">实验设备申请</a>
+    <a href="/assets-mgmt.html">固定资产管理</a>
+    <a href="/borrow.html" class="active">设备借还管理</a>
+    <a href="/stats.html">设备统计</a>
+    <a href="/consumables.html">低值易耗材管理</a>
+  </nav>
+</header>
+<main class="hero" style="max-width:950px;text-align:left;">
+  <h1>借出 / 归还</h1>
+  <div class="feature" style="padding:20px;">
+    <form id="borrowForm">
+      <div class="form-row">
+        <label>设备 *</label>
+        <select id="deviceId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>借用人 *</label>
+        <select id="borrowerUserId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>借出经办人 *</label>
+        <select id="checkoutOperatorId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row"><label>借出时间</label><input id="borrowedAt" type="datetime-local" required /></div>
+      <div class="form-row"><label>应还时间</label><input id="dueAt" type="datetime-local" required /></div>
+      <div class="actions"><button class="btn primary" type="submit">登记借出</button></div>
+    </form>
+    <form id="returnForm" style="margin-top:16px;">
+      <div class="form-row">
+        <label>借还记录 *</label>
+        <select id="txId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>归还经办人 *</label>
+        <select id="returnOperatorId" required>
+          <option value="">请选择...</option>
+        </select>
+      </div>
+      <div class="form-row"><label>归还时间</label><input id="returnedAt" type="datetime-local" required /></div>
+      <div class="actions"><button class="btn primary" type="submit">登记归还</button></div>
+    </form>
+    <p id="borrowMsg" class="lead" style="margin-top:12px;"></p>
+  </div>
+</main>
+</body>
+<script>
+  // 加载参考数据
+  async function loadReferenceData() {
+    try {
+      const [devicesRes, usersRes, borrowsRes] = await Promise.all([
+        fetch('/api/reference/devices'),
+        fetch('/api/reference/users'),
+        fetch('/borrows')
+      ]);
+      
+      if (devicesRes.ok) {
+        const devices = await devicesRes.json();
+        const deviceSelect = document.getElementById('deviceId');
+        devices.forEach(dev => {
+          const opt = document.createElement('option');
+          opt.value = dev.id;
+          opt.textContent = `${dev.deviceName} (ID: ${dev.id}, 编码: ${dev.deviceCode}, 状态: ${dev.status})`;
+          deviceSelect.appendChild(opt);
+        });
+      }
+      
+      if (usersRes.ok) {
+        const users = await usersRes.json();
+        const borrowerSelect = document.getElementById('borrowerUserId');
+        const checkoutSelect = document.getElementById('checkoutOperatorId');
+        const returnSelect = document.getElementById('returnOperatorId');
+        users.forEach(user => {
+          [borrowerSelect, checkoutSelect, returnSelect].forEach(select => {
+            const opt = document.createElement('option');
+            opt.value = user.id;
+            opt.textContent = `${user.fullName || user.username} (ID: ${user.id}, ${user.username})`;
+            select.appendChild(opt);
+          });
+        });
+      }
+      
+      if (borrowsRes.ok) {
+        const borrows = await borrowsRes.json();
+        const txSelect = document.getElementById('txId');
+        const activeBorrows = borrows.filter(b => !b.returnedAt);
+        activeBorrows.forEach(tx => {
+          const opt = document.createElement('option');
+          const fmt = (v) => v ? new Date(v).toLocaleDateString() : '';
+          opt.value = tx.id;
+          opt.textContent = `记录ID: ${tx.id}, 设备ID: ${tx.deviceId}, 借出: ${fmt(tx.borrowedAt)}, 应还: ${fmt(tx.dueAt)}`;
+          txSelect.appendChild(opt);
+        });
+      }
+    } catch (err) {
+      console.error('加载参考数据失败:', err);
+    }
+  }
+  
+  loadReferenceData();
+  
+  const fmt = (v) => {
+    if (!v) return null;
+    // Convert 'YYYY-MM-DDTHH:mm' local input to ISO string
+    const d = new Date(v);
+    return d.toISOString();
+  };
+  const borrowForm = document.getElementById('borrowForm');
+  const returnForm = document.getElementById('returnForm');
+  const msg = document.getElementById('borrowMsg');
+
+  borrowForm.addEventListener('submit', async (e) => {
+    e.preventDefault(); msg.textContent = '提交借出...'; msg.style.color = '';
+    try {
+      const body = {
+        deviceId: Number(document.getElementById('deviceId').value),
+        borrowerUserId: Number(document.getElementById('borrowerUserId').value),
+        checkoutOperatorId: Number(document.getElementById('checkoutOperatorId').value),
+        borrowedAt: fmt(document.getElementById('borrowedAt').value),
+        dueAt: fmt(document.getElementById('dueAt').value)
+      };
+      const res = await fetch('/borrows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMsg = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.message || errorJson.error || errorText;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const data = await res.json();
+      msg.style.color = '';
+      msg.textContent = `借出成功（记录ID=${data.id}）`;
+      borrowForm.reset();
+    } catch (err) {
+      msg.style.color = '#ff6b6b';
+      msg.textContent = '失败：' + (err?.message || err);
+    }
+  });
+
+  returnForm.addEventListener('submit', async (e) => {
+    e.preventDefault(); msg.textContent = '提交归还...'; msg.style.color = '';
+    try {
+      const id = Number(document.getElementById('txId').value);
+      const body = {
+        returnOperatorId: Number(document.getElementById('returnOperatorId').value),
+        returnedAt: fmt(document.getElementById('returnedAt').value)
+      };
+      const res = await fetch(`/borrows/${id}/return`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMsg = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.message || errorJson.error || errorText;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+      const data = await res.json();
+      msg.style.color = '';
+      msg.textContent = `归还成功（记录ID=${data.id}，状态=${data.status}）`;
+      returnForm.reset();
+    } catch (err) {
+      msg.style.color = '#ff6b6b';
+      msg.textContent = '失败：' + (err?.message || err);
+    }
+  });
+</script>
+</html>
+
+

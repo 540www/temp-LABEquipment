@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>实验室管理中心 - LABE</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="/assets/logo.png" alt="LABE" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.16)"/>
+      <span class="logo">LABE</span>
+      <span class="divider"></span>
+      <span class="subtitle">实验室管理中心</span>
+    </div>
+    <nav class="nav">
+      <a href="/">首页</a>
+      <a href="/login.html">登录</a>
+      <a href="/register.html">注册</a>
+      <a href="/lab-center.html" class="active">实验室管理中心</a>
+      <a href="/apply.html">实验设备申请</a>
+      <a href="/assets-mgmt.html">固定资产管理</a>
+      <a href="/borrow.html">设备借还管理</a>
+      <a href="/stats.html">设备统计</a>
+      <a href="/consumables.html">低值易耗材管理</a>
+    </nav>
+  </header>
+  <main class="hero" style="max-width:820px;text-align:left;">
+    <h1>实验室基础信息</h1>
+    <p class="lead">管理账号、密码、实验室名、所属学院等信息。</p>
+    <div class="feature" style="padding:20px;">
+      <form id="labForm">
+        <div class="form-row"><label>账号</label><input id="username" placeholder="teacher1" required /></div>
+        <div class="form-row"><label>密码</label><input id="password" type="password" placeholder="******" required /></div>
+        <div class="form-row"><label>实验室名</label><input id="labName" placeholder="网络实验室" required /></div>
+        <div class="form-row"><label>所属学院</label><select id="departmentName" required><option value="">请选择学院...</option></select></div>
+        <div class="actions"><button class="btn primary" type="submit">保存</button></div>
+      </form>
+      <p id="labMsg" class="lead" style="margin-top:12px;"></p>
+    </div>
+  </main>
+</body>
+<script>
+  const form = document.getElementById('labForm');
+  const msg = document.getElementById('labMsg');
+  const elDeptName = document.getElementById('departmentName');
+  
+  async function loadReferenceData() {
+    try {
+      const res = await fetch('/api/reference/departments');
+      if (res.ok) {
+        const departments = await res.json();
+        elDeptName.innerHTML = '<option value="">请选择学院...</option>';
+        departments.forEach(dept => {
+          const option = document.createElement('option');
+          option.value = dept.name;
+          option.textContent = `${dept.name} (${dept.code || ''})`;
+          elDeptName.appendChild(option);
+        });
+      }
+    } catch (err) {
+      console.error('加载参考数据失败:', err);
+    }
+  }
+  
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '提交中...';
+    const p = new URLSearchParams();
+    p.append('username', document.getElementById('username').value);
+    p.append('password', document.getElementById('password').value);
+    p.append('labName', document.getElementById('labName').value);
+    p.append('departmentName', document.getElementById('departmentName').value);
+    const res = await fetch('/lab-center/setup', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p });
+    if (!res.ok) {
+      const errorText = await res.text();
+      let errorMsg = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMsg = errorJson.message || errorJson.error || errorText;
+      } catch {}
+      msg.style.color = '#ff6b6b';
+      msg.textContent = '失败：' + errorMsg;
+      return;
+    }
+    const data = await res.json();
+    msg.style.color = '';
+    msg.textContent = `已保存（院系ID=${data.departmentId}，实验室ID=${data.laboratoryId}，用户ID=${data.userId}）`;
+  });
+  
+  loadReferenceData();
+</script>
+</html>
+
+
